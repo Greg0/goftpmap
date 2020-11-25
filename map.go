@@ -14,6 +14,7 @@ type Connection struct {
 	Login    string
 	Password string
 	Root     string
+	Output	 string
 }
 
 func main() {
@@ -23,12 +24,14 @@ func main() {
 		Login:    "",
 		Password: "",
 		Root:     "/",
+		Output:   "",
 	}
 
 	flag.StringVar(&conn.Host, "h", "", "host[:port]")
 	flag.StringVar(&conn.Login, "u", "", "User")
 	flag.StringVar(&conn.Password, "p", "", "Password")
-	flag.StringVar(&conn.Root, "root", "/", "Root directory")
+	flag.StringVar(&conn.Root, "r", "/", "Root directory")
+	flag.StringVar(&conn.Root, "o", "/", "Output file")
 	flag.Parse()
 
 	if len(conn.Host) == 0 || len(conn.Login) == 0 || len(conn.Password) == 0 {
