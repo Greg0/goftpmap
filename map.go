@@ -1,8 +1,11 @@
 package main
 
 import (
+	"encoding/csv"
 	"flag"
 	"fmt"
+	"os"
+	"strconv"
 	"strings"
 
 	"github.com/fatih/color"
@@ -14,7 +17,7 @@ type Connection struct {
 	Login    string
 	Password string
 	Root     string
-	Output	 string
+	Output   string
 }
 
 func main() {
@@ -24,7 +27,7 @@ func main() {
 		Login:    "",
 		Password: "",
 		Root:     "/",
-		Output:   "",
+		Output:   "output.csv",
 	}
 
 	flag.StringVar(&conn.Host, "h", "", "host[:port]")
@@ -38,7 +41,7 @@ func main() {
 		ProgramError("Missing arguments")
 	}
 
-	client, err := ftp.Dial(conn.Host)
+	client, err := ftp.Dial(conn.Host, ftp.DialWithDisabledUTF8(true))
 	ErrorCheck(err)
 
 	err = client.Login(conn.Login, conn.Password)
@@ -46,20 +49,32 @@ func main() {
 
 	fmt.Println("Connected to server")
 
-	ReadDir(client, conn.Root)
+	file, err := os.Create(conn.Output)
+	ErrorCheck(err)
+	defer file.Close()
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+	writer.Write([]string{"dir", "filename", "path"})
+	count := ReadDir(client, conn.Root, writer)
+
+	fmt.Println("Saved " + strconv.Itoa(count) + " to " + conn.Output)
 }
 
-func ReadDir(client *ftp.ServerConn, dir string) {
+func ReadDir(client *ftp.ServerConn, dir string, writer *csv.Writer) int {
+	count := 0
 	entries, _ := client.List(dir)
-
 	for _, entry := range entries {
 		relativePath := strings.Trim(dir+"/"+entry.Name, "/")
 		if entry.Type == ftp.EntryTypeFolder {
-			ReadDir(client, relativePath)
+			count += ReadDir(client, relativePath, writer)
 		} else {
-			fmt.Println(relativePath)
+			writer.Write([]string{dir, entry.Name, relativePath})
+			// fmt.Println(relativePath)
+			count++
 		}
 	}
+
+	return count
 }
 
 func ErrorCheck(err error) {
